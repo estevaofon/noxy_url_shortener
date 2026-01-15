@@ -6,6 +6,7 @@ This project serves as a showcase for the capabilities of the Noxy programming l
 
 <img height="300" alt="image" src="https://github.com/user-attachments/assets/b866a9b3-0333-4199-be49-73dd5ec00615" />
 
+
 ## 📊 How it Works
 
 ```mermaid
@@ -36,7 +37,7 @@ sequenceDiagram
 
 ## 🛠️ The Code
 
-The entire logic resides in a single file, `server_v3.nx`. It's clean, readable, and powerful.
+The entire logic resides in a single file, `server.nx`. It's clean, readable, and powerful.
 
 ### Handler Example
 
