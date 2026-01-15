@@ -6,16 +6,6 @@ This project serves as a showcase for the capabilities of the Noxy programming l
 
 <img height="300" alt="image" src="https://github.com/user-attachments/assets/b866a9b3-0333-4199-be49-73dd5ec00615" />
 
-
-## 🚀 Features implemented in Noxy
-
-- **Parallel Processing**: Uses Noxy's `spawn()` and lightweight threads.
-- **Thread-Safe SQLite**: Direct database access from concurrent handlers using the global `sqlite.Database`.
-- **Native Web Server**: Built on Noxy's `http_server` module.
-- **Obfuscated IDs**: Custom algorithm using native `base62_encode` and bitwise XOR operations to create professional short codes (e.g., `8M0v`) from sequential database IDs.
-- **JSON API**: Native JSON parsing and response generation.
-
-
 ## 📊 How it Works
 
 ```mermaid
