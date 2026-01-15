@@ -37,12 +37,10 @@ end
 1.  **Install Noxy**: Ensure you have a recent build of the Noxy VM.
 2.  **Run the Server**:
     ```bash
-    noxy run server_v3.nx
+    noxy server.nx
     ```
 3.  **Test it**:
-    ```bash
-    curl -X POST -d '{"url":"https://example.com"}' http://localhost:8080/api/shorten
-    ```
+    In your browser, navigate to `http://127.0.0.1:8080` to see the shortener in action.
 
 ## 📚 About Noxy
 
