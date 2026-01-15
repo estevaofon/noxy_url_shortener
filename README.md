@@ -1,8 +1,11 @@
 # Noxy URL Shortener
 
-A high-performance, thread-safe URL shortener built entirely in **Noxy**.
+A high-performance, thread-safe URL shortener built entirely in **Noxy**. [Official Website.](https://noxylang.com/)
 
 This project serves as a showcase for the capabilities of the Noxy programming language, demonstrating how to build robust backend applications with minimal code.
+
+<img height="300" alt="image" src="https://github.com/user-attachments/assets/b866a9b3-0333-4199-be49-73dd5ec00615" />
+
 
 ## 🚀 Features implemented in Noxy
 
