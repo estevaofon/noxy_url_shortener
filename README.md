@@ -12,6 +12,35 @@ This project serves as a showcase for the capabilities of the Noxy programming l
 - **Obfuscated IDs**: Custom algorithm using native `base62_encode` and bitwise XOR operations to create professional short codes (e.g., `8M0v`) from sequential database IDs.
 - **JSON API**: Native JSON parsing and response generation.
 
+
+## 📊 How it Works
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Server as Noxy Server
+    participant DB as SQLite Database
+
+    User->>Server: POST /api/shorten { "url": "..." }
+    activate Server
+    
+    Server->>DB: INSERT "original_url", "created_at"
+    activate DB
+    DB-->>Server: Return New ID (e.g. 101)
+    deactivate DB
+
+    Note right of Server: 1. Obfuscate ID (ID ^ KEY)<br/>2. Base62 Encode (Masked ID -> Code)
+
+    Server->>DB: UPDATE urls SET code = "..." WHERE id = 101
+    activate DB
+    DB-->>Server: OK
+    deactivate DB
+
+    Server-->>User: 200 OK { "code": "...", "short_url": "/..." }
+    deactivate Server
+```
+
 ## 🛠️ The Code
 
 The entire logic resides in a single file, `server_v3.nx`. It's clean, readable, and powerful.
