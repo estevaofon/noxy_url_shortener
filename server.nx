@@ -1,20 +1,17 @@
-use http_server select *
-use http_parser select *
-use net select *
-use io select *
+use http_server
+use http_parser
+use io
 use sqlite
-use strings select *
-use json_parser select *
-use json_helpers select *
-use sys select *
+use strings
+use json_parser
+use json_helpers
 use time
-use rand select *
 
 // ============================================
 // Database Setup
 // ============================================
 
-let db: sqlite.Database = sqlite.open("urls_v3.db") // New DB file for V3 schema
+let db: sqlite.Database = sqlite.open("urls_v3.db") // Keep same DB as v3 for compatibility
 
 if !db.open then
      print("Failed to open DB")
@@ -56,18 +53,18 @@ end
 // ============================================
 
 func read_file(path: string) -> string
-    let f: File = open(path, "r")
+    let f: io.File = io.open(path, "r")
     
     if !f.open then
         let fallback: string = "noxy_examples/url_shortener/" + path
-        f = open(fallback, "r")
+        f = io.open(fallback, "r")
         if !f.open then
             return ""
         end
     end
     
-    let res: IOResult = read(f)
-    close(f)
+    let res: io.IOResult = io.read(f)
+    io.close(f)
     
     if res.ok then 
         return res.data 
@@ -79,17 +76,17 @@ end
 // Handlers
 // ============================================
 
-func handle_shorten(body: bytes) -> HttpResponse
+func handle_shorten(body: bytes) -> http_parser.HttpResponse
     let json_str: string = to_str(body)
-    let node: ref JsonNode = json_parse(json_str) 
+    let node: ref json_parser.JsonNode = json_parser.json_parse(json_str) 
     
     if node == null then 
-        return response_error(400, "Invalid JSON") 
+        return http_server.response_error(400, "Invalid JSON") 
     end
     
-    let url: string = get_string(node, "url")
+    let url: string = json_helpers.get_string(node, "url")
     if is_empty(url) then 
-        return response_error(400, "Missing url field") 
+        return http_server.response_error(400, "Missing url field") 
     end
     
     let created_at: string = time.format(time.now_datetime())
@@ -102,7 +99,7 @@ func handle_shorten(body: bytes) -> HttpResponse
     let res: sqlite.ExecResult = sqlite.execute_params(db, "INSERT INTO urls (original_url, created_at) VALUES (?, ?)", params)
     
     if res == null || !res.ok then 
-        return response_error(500, "DB Insert Error: " + res.error) 
+        return http_server.response_error(500, "DB Insert Error: " + res.error) 
     end
     
     let id: int = res.last_insert_id
@@ -117,14 +114,14 @@ func handle_shorten(body: bytes) -> HttpResponse
     sqlite.execute_params(db, "UPDATE urls SET code = ? WHERE id = ?", update_params)
     
     let json_resp: string = "{\"code\": \"" + code + "\", \"short_url\": \"/" + code + "\"}"
-    return response_json(json_resp)
+    return http_server.response_json(json_resp)
 end
 
-func handle_list() -> HttpResponse
+func handle_list() -> http_parser.HttpResponse
     let res: sqlite.QueryResult = sqlite.query(db, "SELECT code, original_url, created_at FROM urls ORDER BY id DESC LIMIT 20")
     
     if res == null || !res.ok then 
-        return response_error(500, "DB Query Error") 
+        return http_server.response_error(500, "DB Query Error") 
     end
     
     let items: string[20]
@@ -136,11 +133,12 @@ func handle_list() -> HttpResponse
             break 
         end
         
-        let row: Row = res.rows[i]
+        // Note: Row type is likely in sqlite module if checking sqlite.nx
+        let row: sqlite.Row = res.rows[i]
         // Ensure code is not null (legacy rows might be issues if mixed, but we used new DB)
         let code: string = row.values[0] 
         let url: string = row.values[1]
-        let safe_url: string = replace(url, "\"", "\\\"")
+        let safe_url: string = strings.replace(url, "\"", "\\\"")
         
         let item: string = "{\"code\": \"" + code + "\", \"original_url\": \"" + safe_url + "\"}"
         items[count] = item
@@ -148,13 +146,13 @@ func handle_list() -> HttpResponse
         i = i + 1
     end
     
-    let joined: string = join_count(items, ",", count)
-    return response_json("[" + joined + "]")
+    let joined: string = strings.join_count(items, ",", count)
+    return http_server.response_json("[" + joined + "]")
 end
 
-func handle_redirect(req: HttpRequest, code: string) -> HttpResponse
-    if !is_alnum(code) then 
-        return response_404() 
+func handle_redirect(req: http_parser.HttpRequest, code: string) -> http_parser.HttpResponse
+    if !strings.is_alnum(code) then 
+        return http_server.response_404() 
     end
     
     // Decode Code -> ID
@@ -162,7 +160,7 @@ func handle_redirect(req: HttpRequest, code: string) -> HttpResponse
     let id: int = decode_code(code)
     
     if id <= 0 then
-        return response_404()
+        return http_server.response_404()
     end
     
     // Lookup by ID (Faster than string index!)
@@ -171,10 +169,10 @@ func handle_redirect(req: HttpRequest, code: string) -> HttpResponse
     let q_res: sqlite.QueryResult = sqlite.query(db, sql)
     
     if q_res == null || !q_res.ok || q_res.row_count == 0 then 
-        return response_404() 
+        return http_server.response_404() 
     end
     
-    let row: Row = q_res.rows[0]
+    let row: sqlite.Row = q_res.rows[0]
     let original_url: string = row.values[0]
     
     let headers: string[64]
@@ -182,14 +180,14 @@ func handle_redirect(req: HttpRequest, code: string) -> HttpResponse
     headers[1] = "Connection: close"
     headers[2] = "Content-Type: text/plain"
     
-    return HttpResponse("HTTP/1.1", 302, "Found", headers, 3, to_bytes("Redirecting to " + original_url))
+    return http_parser.HttpResponse("HTTP/1.1", 302, "Found", headers, 3, to_bytes("Redirecting to " + original_url))
 end
 
 // ============================================
 // Router & Main
 // ============================================
 
-func router(req: HttpRequest) -> HttpResponse
+func router(req: http_parser.HttpRequest) -> http_parser.HttpResponse
     print("Request: " + req.method + " " + req.path)
     
     if req.method == "POST" && req.path == "/api/shorten" then
@@ -202,31 +200,31 @@ func router(req: HttpRequest) -> HttpResponse
 
     if req.method == "GET" then
         if req.path == "/" || req.path == "/index.html" then
-            return response_html(read_file("public/index.html"))
+            return http_server.response_html(read_file("public/index.html"))
         end
         if req.path == "/style.css" then 
-            return response_ok(to_bytes(read_file("public/style.css")), "text/css")
+            return http_server.response_ok(to_bytes(read_file("public/style.css")), "text/css")
         end
         if req.path == "/script.js" then 
-            return response_ok(to_bytes(read_file("public/script.js")), "application/javascript")
+            return http_server.response_ok(to_bytes(read_file("public/script.js")), "application/javascript")
         end
         
-        if length(req.path) > 1 && starts_with(req.path, "/") then
-             let code: string = substring(req.path, 1, length(req.path))
+        if length(req.path) > 1 && strings.starts_with(req.path, "/") then
+             let code: string = strings.substring(req.path, 1, length(req.path))
              if length(code) > 0 then
                  return handle_redirect(req, code)
              end
         end
     end
     
-    return response_404()
+    return http_server.response_404()
 end
 
 let host: string = "127.0.0.1"
 let port: int = 8080
-let server: HttpServer = new_server(host, port)
+let server: http_server.HttpServer = http_server.new_server(host, port)
 
-print("URL Shortener V3 (Obfuscated IDs) running at http://" + host + ":" + to_str(port))
+print("URL Shortener V4 (Namespaced) running at http://" + host + ":" + to_str(port))
 print("Press Ctrl+C to stop")
 
-serve(server, router)
+http_server.serve(server, router)
